@@ -1,8 +1,4 @@
-const client = require('./client');
-const feed = require('./feed');
+const controller = require('./controller');
 
 // Export all
-module.exports = {
-  client,
-  feed,
-};
+module.exports.controller = controller;

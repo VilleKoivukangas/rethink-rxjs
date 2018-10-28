@@ -1,9 +1,10 @@
-const { expect, assert } = require('chai');
+const { expect } = require('chai');
 const controller = require('../src/controller');
+const utils = require('./utils');
 
 describe('#feed', () => {
 
-  const table = 'test';
+  const table = 'testTable';
   let r;
 
   before(async () => {
@@ -17,13 +18,16 @@ describe('#feed', () => {
     };
 
     r = await controller.getR(options);
+
+    await r.tableDrop(table);
+    await r.db('test').tableCreate(table);
   });
 
   // Test case for insert
   it('should return type "add", value "foo" and oldValue null', (done) => {
     const expectedValue = 'insert-test';
     const queryObject = r.table(table).filter({value: expectedValue});
-      controller.getFeed(queryObject).then(async (feed) => {
+    controller.getFeed(queryObject).then(async (feed) => {
         await controller.subscribe(feed, ([value, oldValue, type]) => {
           expect(type).to.equal('add');
           expect(value.value).to.equal(expectedValue);
@@ -33,7 +37,7 @@ describe('#feed', () => {
 
         // TODO: For some reason we are not waiting subscribe to resolve
         setTimeout(() => {
-          controller.insertDbObject(r, table, {value: expectedValue}); 
+          utils.insertDbObject(r, table, {value: expectedValue}); 
         }, 200);
     });
   });
@@ -56,8 +60,8 @@ describe('#feed', () => {
 
       // TODO: For some reason we are not waiting subscribe to resolve
       setTimeout(async () => {
-        await controller.insertDbObject(r, table, initialValue);
-        controller.updateDbObject(r, table, initialValue, 1, expectedValue);
+        await utils.insertDbObject(r, table, initialValue);
+        utils.updateDbObject(r, table, initialValue, 1, expectedValue);
       }, 200);
     });
   });
@@ -80,8 +84,8 @@ describe('#feed', () => {
 
       // TODO: For some reason we are not waiting subscribe to resolve
       setTimeout(async () => {
-        await controller.insertDbObject(r, table, initialValue);
-        controller.deleteDbObject(r, table, initialValue, 1);
+        await utils.insertDbObject(r, table, initialValue);
+        utils.deleteDbObject(r, table, initialValue, 1);
       }, 200);
     });
   });
