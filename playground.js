@@ -7,7 +7,19 @@ const utils = require('./test/utils');
 // Use your imagination
 const table = 'test';
 
-rethinkRxjs.controller.getR().then(async (r) => {
+const options = {
+  host: '127.0.0.1',
+  timeoutError: 10000,
+  port: 38015,
+  pool: true,
+  cursor: true,
+  silent: true,
+};
+
+rethinkRxjs.controller.getR(options).then(async (r) => {
+  await r.tableDrop(table);
+  await r.db('test').tableCreate(table);
+
   const queryObject = r.table(table);
   const feed = await rethinkRxjs.controller.getFeed(queryObject);
 
