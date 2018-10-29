@@ -9,17 +9,19 @@ describe('#client', () => {
   let options = {
     host: '127.0.0.1',
     timeoutError: 10000,
-    port: 28015,
+    port: 38015,
     pool: true,
     cursor: true,
     silent: true,
   };
 
-  before(async () => {
-    r = await controller.getR(options);
-
-    await r.tableDrop(table);
-    await r.tableCreate(table);
+  before((done) => {
+    controller.getR(options).then((rethink) => {
+      r = rethink;
+      r.tableCreate(table).then(() => {
+        done();
+      });
+    });
   });
 
   // Test case for client exists
@@ -36,7 +38,11 @@ describe('#client', () => {
     });
   });
 
-  after(async () => {
-    await r.getPoolMaster().drain();
+  after((done) => {
+    r.tableDrop(table).then(() => {
+      r.getPoolMaster().drain().then(() => {
+        done();
+      });
+    });
   });
 });

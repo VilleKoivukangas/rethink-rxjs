@@ -1,4 +1,4 @@
-const { expect } = require('chai');
+const { expect, assert } = require('chai');
 const controller = require('../src/controller');
 const utils = require('./utils');
 
@@ -7,43 +7,45 @@ describe('#feed', () => {
   const table = 'testTable';
   let r;
 
-  before(async () => {
+  before((done) => {
     const options = {
       host: '127.0.0.1',
       timeoutError: 10000,
-      port: 28015,
+      port: 38015,
       pool: true,
       cursor: true,
       silent: true,
     };
 
-    r = await controller.getR(options);
-
-    await r.tableDrop(table);
-    await r.db('test').tableCreate(table);
+    controller.getR(options).then((rethink) => {
+      r = rethink;
+      r.tableCreate(table).then(() => {
+        done();
+      });
+    });
   });
 
   // Test case for insert
-  it('should return type "add", value "foo" and oldValue null', (done) => {
+  it('should return type "add", value "foo" and oldValue null', () => {
     const expectedValue = 'insert-test';
     const queryObject = r.table(table).filter({value: expectedValue});
+    
     controller.getFeed(queryObject).then(async (feed) => {
-        await controller.subscribe(feed, ([value, oldValue, type]) => {
-          expect(type).to.equal('add');
-          expect(value.value).to.equal(expectedValue);
-          expect(oldValue).to.equal(null);
-          done();
-        });
+      await controller.subscribe(feed, ([value, oldValue, type]) => {
+        expect(type).to.equal('add');
+        expect(value.value).to.equal(expectedValue);
+        assert.equal(oldValue, null);
+      });
 
-        // TODO: For some reason we are not waiting subscribe to resolve
-        setTimeout(() => {
-          utils.insertDbObject(r, table, {value: expectedValue}); 
-        }, 200);
+      // TODO: For some reason we are not waiting subscribe to resolve
+      setTimeout(() => {
+        utils.insertDbObject(r, table, {value: expectedValue}); 
+      }, 200);
     });
   });
 
   // Test case for update
-  it('should update object from database', (done) => {
+  it('should update object from database', () => {
     const initialValue = {value: 'updatetest'};
     const expectedValue = {value: 'updated'};
     const queryObject = r.table(table).filter(expectedValue);
@@ -54,8 +56,7 @@ describe('#feed', () => {
         // Depening on situation it returns type remove or add instead of updated 
         // (can't assert old value and it would be stupid to assert type to removed here)
         // Figure out something better here
-        expect(value.value).to.equal(expectedValue.value);
-        done();
+        assert.equal(value.value, expectedValue.value);
       });
 
       // TODO: For some reason we are not waiting subscribe to resolve
@@ -77,6 +78,7 @@ describe('#feed', () => {
         if (type === 'add') {
           return;
         }
+
         expect(type).to.equal('remove');
         expect(value).to.equal(expectedValue);
         done();
@@ -91,7 +93,10 @@ describe('#feed', () => {
   });
 
   after((done) => {
-    r.getPoolMaster().drain();
-    done();
+    r.tableDrop(table).then(() => {
+      r.getPoolMaster().drain().then(() => {
+        done();
+      });
+    });
   });
 });
